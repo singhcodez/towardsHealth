@@ -31,19 +31,26 @@ const [error, setError] = useState(null);
       activities
     };
 
-   try {
-  const response = await fetch('/.netlify/functions/analyze', { method: 'POST', body: JSON.stringify(payload) });
-  const data = await response.json();
+try {
+      const response = await fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
 
-  if (response.status === 200) {
-    setAnalysis(data); // Success!
-  } else {
-    // Show the error message sent from the backend
-    alert(data.error || "Something went wrong."); 
-  }
-} catch (error) {
-  alert("Connection error: Ensure the app is connected to the internet.");
-}
+      // NEW: Force an error if the status isn't 200 OK
+      if (!response.ok) {
+        throw new Error(data.details || data.error || "Unknown backend error");
+      }
+      
+      setAnalysis(data);
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      alert(`Backend Error: ${error.message}`); 
+    } finally {
+      setLoading(false);
+    }
     finally {
       setLoading(false);
     }
