@@ -1,6 +1,9 @@
+// netlify/functions/analyze.js
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { JsonOutputParser } from "@langchain/core/output_parsers";
 
 export const handler = async (event) => {
-  // Only allow POST requests
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
@@ -10,76 +13,62 @@ export const handler = async (event) => {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      return { statusCode: 500, body: JSON.stringify({ error: "API key is missing" }) };
+      return { statusCode: 500, body: JSON.stringify({ error: "API key is missing from environment" }) };
     }
 
-    // Construct the structured prompt for Gemini
-    const prompt = `
-      You are an elite fitness and nutrition AI. Analyze this structured fitness data log for today.
-      
-      User Profile & Context:
-      - Profession: ${payload.profession}
-      - Local Weather: ${JSON.stringify(payload.weather)}
-
-      Meals Consumed:
-      ${JSON.stringify(payload.meals)}
-
-      Activities & Exercise Done:
-      ${JSON.stringify(payload.activities)}
-
-      Instructions:
-      1. Calculate total_calories_in based on standard profiles or specific brands provided.
-      2. Calculate total_calories_out (combine standard BMR calculations with the burned calories from exercises/tasks/profession).
-      3. Provide macro breakdown (protein_g, carbs_g, fat_g).
-      4. Give a short 'daily_verdict' advising what to eat or how to work out next based on their net balance and local weather.
-
-      Return ONLY a valid JSON object matching this exact schema:
-      {
-        "total_calories_in": number,
-        "total_calories_out": number,
-        "macros": {
-          "protein_g": number,
-          "carbs_g": number,
-          "fat_g": number
-        },
-        "daily_verdict": "string"
-      }
-    `;
-
-    // Make the request to Gemini 2.5 Flash
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { 
-          response_mime_type: "application/json" // Enforce strict JSON output
-        }
-      })   
+    // 1. Initialize the LangChain Gemini Model
+    const model = new ChatGoogleGenerativeAI({
+      modelName: "gemini-2.5-flash",
+      apiKey: apiKey,
+      temperature: 0.2, // Low temperature for more consistent data parsing
     });
-      // 1. Check if the API hit a rate limit (429) or is unauthorized (401/403)
-    if (response.status === 429) {
-     return { statusCode: 429, body: JSON.stringify({ error: "Rate limit exceeded. Please try again in a minute." }) };
-    }
 
-    if (!response.ok) {
-      return { statusCode: response.status, body: JSON.stringify({ error: "Gemini API error. Please check your API Key configuration." }) };
-      }
-    const data = await response.json();
-    
-    // Extract the JSON text from Gemini's response
-    const finalResult = data.candidates[0].content.parts[0].text;
+    // 2. Define the exact JSON structure you want LangChain to enforce
+    const parser = new JsonOutputParser();
+    const formatInstructions = parser.getFormatInstructions();
 
+    // 3. Create a clean Prompt Template
+    const prompt = new PromptTemplate({
+      template: `
+        You are an elite fitness and nutrition AI. Analyze this structured fitness data log for today.
+        
+        User Profession: {profession}
+        Local Weather: {weather}
+        
+        Meals Consumed: {meals}
+        
+        Activities & Exercise Done: {activities}
+        
+        Calculate total calories in, total calories out, macronutrients, and provide a short daily verdict based on the net balance and weather.
+        
+        {format_instructions}
+      `,
+      inputVariables: ["profession", "weather", "meals", "activities"],
+      partialVariables: { format_instructions: formatInstructions },
+    });
+
+    // 4. Create the LangChain Chain (Prompt -> Model -> Parser)
+    const chain = prompt.pipe(model).pipe(parser);
+
+    // 5. Execute the chain with the user's payload
+    const result = await chain.invoke({
+      profession: payload.profession,
+      weather: JSON.stringify(payload.weather),
+      meals: JSON.stringify(payload.meals),
+      activities: JSON.stringify(payload.activities),
+    });
+
+    // 6. Return the perfectly parsed JSON back to React
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: finalResult
+      body: JSON.stringify(result)
     };
 
   } catch (err) {
     return { 
       statusCode: 500, 
-      body: JSON.stringify({ error: "Failed to process data", details: err.message }) 
+      body: JSON.stringify({ error: "Failed to process data via LangChain", details: err.message }) 
     };
   }
 };
