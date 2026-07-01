@@ -51,9 +51,6 @@ try {
     } finally {
       setLoading(false);
     }
-    finally {
-      setLoading(false);
-    }
   };
 
 
