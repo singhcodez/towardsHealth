@@ -68,7 +68,7 @@ export const handler = async (event) => {
   } catch (err) {
     return { 
       statusCode: 500, 
-      body: JSON.stringify({ error: "Failed to process data via LangChain", details: err.message }) 
+      body: JSON.stringify({ error: `Failed to process data via LangChain ${err.message}`, details: err.message }) 
     };
   }
 };
