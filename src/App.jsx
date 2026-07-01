@@ -3,7 +3,7 @@ import Onboarding from './components/Onboarding';
 import MealLogger from './components/MealLogger';
 import ActivityLogger from './components/ActivityLogger';
 import Dashboard from './components/Dashboard';
-
+import Calculators from './components/Calculators';
 export default function App() {
   const [profile, setProfile] = useState({ profession: '' });
   const [meals, setMeals] = useState([{ food_item: '', quantity: '', is_branded: false, brand_name: '' }]);
@@ -62,7 +62,7 @@ try {
       </header>
 
       <Onboarding profile={profile} setProfile={setProfile} />
-      
+      <Calculators profile={profile} />
       <MealLogger meals={meals} setMeals={setMeals} />
       
       <ActivityLogger activities={activities} setActivities={setActivities} />
