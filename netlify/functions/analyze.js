@@ -20,7 +20,7 @@ export const handler = async (event) => {
     const model = new ChatGoogleGenerativeAI({
       modelName: "gemini-2.5-flash",
       apiKey: apiKey,
-      temperature: 0.2, // Low temperature for more consistent data parsing
+      temperature: 0.0, // Low temperature for more consistent data parsing
     });
 
     // 2. Define the exact JSON structure you want LangChain to enforce
@@ -46,7 +46,8 @@ export const handler = async (event) => {
         1. Output ONLY a valid JSON object.
         2. Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json).
         3. Do NOT include ANY conversational text before or after the JSON.
-        
+        4. Be completely deterministic. Always apply the exact same standard nutritional values (e.g., USDA database) to identical food items across different requests.
+
         {format_instructions}
       `,
       inputVariables: ["profession", "weather", "meals", "activities"],
