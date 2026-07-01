@@ -28,9 +28,10 @@ export const handler = async (event) => {
     const formatInstructions = parser.getFormatInstructions();
 
     // 3. Create a clean Prompt Template
+    // 3. Create a clean, strict Prompt Template
     const prompt = new PromptTemplate({
       template: `
-        You are an elite fitness and nutrition AI. Analyze this structured fitness data log for today.
+        You are a strict, automated fitness data API. You do not converse. You only output raw, valid JSON.
         
         User Profession: {profession}
         Local Weather: {weather}
@@ -39,7 +40,12 @@ export const handler = async (event) => {
         
         Activities & Exercise Done: {activities}
         
-        Calculate total calories in, total calories out, macronutrients, and provide a short daily verdict based on the net balance and weather.
+        Calculate total calories in, total calories out, macronutrients, and provide a short daily_verdict based on the net balance and weather.
+        
+        CRITICAL RULES:
+        1. Output ONLY a valid JSON object.
+        2. Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json).
+        3. Do NOT include ANY conversational text before or after the JSON.
         
         {format_instructions}
       `,
