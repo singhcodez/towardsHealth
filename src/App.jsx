@@ -12,6 +12,52 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 const [error, setError] = useState(null);
 
+// Inside your App component
+const [weather, setWeather] = useState({ temp: "Unknown", condition: "Unknown" });
+const [locationError, setLocationError] = useState("");
+//saving profile in local storage
+const [profile, setProfile] = useState(() => {
+  const saved = localStorage.getItem('fitness_profile');
+  return saved ? JSON.parse(saved) : {}; 
+});
+
+// In App.jsx
+const fetchWeather = async (lat, lon, cityName = null) => {
+  const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+  let url = '';
+
+  if (cityName) {
+    // Manual fallback URL
+    url = `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&units=metric&appid=${apiKey}`;
+  } else if (lat && lon) {
+    // Geolocation URL
+    url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+  } else {
+    return; // No location data available at all
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Weather fetch failed");
+    
+    const data = await response.json();
+    setWeather({
+      temp: `${Math.round(data.main.temp)}°C`,
+      condition: data.weather[0].main
+    });
+  } catch (err) {
+    console.error("Weather API Error:", err);
+    // Optionally set a default fallback here so LangChain doesn't break
+    setWeather({ temp: "Unknown", condition: "Unknown" }); 
+  }
+};
+
+// Optional: Fetch on mount
+useEffect(() => {
+  fetchLocalWeather();
+}, []);
+
+
   // Register PWA Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -26,7 +72,7 @@ const [error, setError] = useState(null);
     
     const payload = {
       profession: profile.profession,
-      weather: { temp: "38°C", condition: "Sunny" }, 
+      weather: weather, 
       meals,
       activities
     };
