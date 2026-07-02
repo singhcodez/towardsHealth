@@ -59,8 +59,22 @@ export const handler = async (event) => {
     const robustModel = model1.withFallbacks([model2, model3, model4, model5]);
     // ----------------------------
 
-    // The Parser enforces JSON output across all models in the chain
-    const parser = new JsonOutputParser();
+ // 1. DEFINE YOUR EXACT JSON STRUCTURE
+    const fitnessSchema = z.object({
+  daily_verdict: z.string().describe("A short, encouraging or analytical sentence summarizing the day based on calories and weather."),
+  total_calories_in: z.number().describe("Total calories consumed from all meals."),
+  total_calories_out: z.number().describe("Total calories burned from all activities."),
+  macros: z.object({
+    protein_g: z.number().describe("Total protein in grams"),
+    carbs_g: z.number().describe("Total carbs in grams"),
+    fat_g: z.number().describe("Total fat in grams")
+  }).describe("Macronutrient breakdown of the meals consumed")
+});
+
+
+    // 2. CREATE THE STRUCTURED PARSER
+    const parser = StructuredOutputParser.fromZodSchema(fitnessSchema);
+  
     
     const prompt = new PromptTemplate({
       template: `
@@ -75,10 +89,11 @@ export const handler = async (event) => {
         
         Calculate total calories in, total calories out, macronutrients, and provide a short daily_verdict based on the net balance and weather.
         
-        CRITICAL RULES:
+                CRITICAL RULES:
         1. Output ONLY a valid JSON object.
         2. Do NOT wrap the JSON in markdown code blocks.
-        3. Do NOT include ANY conversational text.
+        3. Do NOT include ANY conversational text before or after the JSON.
+        4. Be completely deterministic. Always apply the exact same standard nutritional values (e.g., USDA database) to identical food items across different requests.
 
         {format_instructions}
       `,
