@@ -5,8 +5,13 @@ import ActivityLogger from './components/ActivityLogger';
 import Dashboard from './components/Dashboard';
 import Calculators from './components/Calculators';
 export default function App() {
-  const [profile, setProfile] = useState({ profession: '' });
-  const [meals, setMeals] = useState([{ food_item: '', quantity: '', is_branded: false, brand_name: '' }]);
+  const [profile, setProfile] = useState(() => {
+    const saved = localStorage.getItem('fitness_profile');
+    return saved ? JSON.parse(saved) : { 
+      profession: ''
+      // ... default empty fields
+    };
+  });  const [meals, setMeals] = useState([{ food_item: '', quantity: '', is_branded: false, brand_name: '' }]);
   const [activities, setActivities] = useState([{ task: '', duration_minutes: '' }]);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -15,11 +20,7 @@ const [error, setError] = useState(null);
 // Inside your App component
 const [weather, setWeather] = useState({ temp: "Unknown", condition: "Unknown" });
 const [locationError, setLocationError] = useState("");
-//saving profile in local storage
-const [profile, setProfile] = useState(() => {
-  const saved = localStorage.getItem('fitness_profile');
-  return saved ? JSON.parse(saved) : {}; 
-});
+
 
 // In App.jsx
 const fetchWeather = async (lat, lon, cityName = null) => {
