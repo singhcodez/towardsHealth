@@ -53,11 +53,6 @@ const fetchWeather = async (lat, lon, cityName = null) => {
   }
 };
 
-// Optional: Fetch on mount
-useEffect(() => {
-  fetchLocalWeather();
-}, []);
-
 
   // Register PWA Service Worker
   useEffect(() => {
