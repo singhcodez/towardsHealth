@@ -16,19 +16,52 @@ export const handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: "API key is missing from environment" }) };
     }
 
-    // 1. Initialize the LangChain Gemini Model
-    const model = new ChatGoogleGenerativeAI({
-      modelName: "gemini-3.1-flash-lite",
+    // --- FALLBACK CHAIN SETUP ---
+    const commonConfig = {
       apiKey: apiKey,
-      temperature: 0.0, // Low temperature for more consistent data parsing
+      temperature: 0.0,
+      maxRetries: 0, // Force instant failover on rate limits (429 errors)
+    };
+
+    // 1. Primary: The latest, most capable free model
+    const model1 = new ChatGoogleGenerativeAI({
+      modelName: "gemini-3.5-flash", 
+      ...commonConfig
     });
 
-    // 2. Define the exact JSON structure you want LangChain to enforce
-    const parser = new JsonOutputParser();
-    const formatInstructions = parser.getFormatInstructions();
+    // 2. Secondary: Ultra-fast 3.1 model
+    const model2 = new ChatGoogleGenerativeAI({
+      modelName: "gemini-3.1-flash-lite", 
+      ...commonConfig
+    });
 
-    // 3. Create a clean Prompt Template
-    // 3. Create a clean, strict Prompt Template
+    // 3. Tertiary: Highly stable previous generation
+    const model3 = new ChatGoogleGenerativeAI({
+      modelName: "gemini-2.5-flash", 
+      ...commonConfig
+    });
+
+    // 4. Quaternary: Older lightweight model
+    const model4 = new ChatGoogleGenerativeAI({
+      modelName: "gemini-2.5-flash-lite", 
+      ...commonConfig
+    });
+
+    // 5. Final Fallback: Gemma (Open-weights model hosted on Google AI Studio)
+    const model5 = new ChatGoogleGenerativeAI({
+      modelName: "gemma-4-26b-a4b", // Supported Gemma model on Google AI
+      apiKey: apiKey,
+      temperature: 0.0,
+      maxRetries: 1, // Allow one retry on the absolute final model before completely failing
+    });
+
+    // Link them all together. If model1 fails, it tries model2, then model3, etc.
+    const robustModel = model1.withFallbacks([model2, model3, model4, model5]);
+    // ----------------------------
+
+    // The Parser enforces JSON output across all models in the chain
+    const parser = new JsonOutputParser();
+    
     const prompt = new PromptTemplate({
       template: `
         You are a strict, automated fitness data API. You do not converse. You only output raw, valid JSON.
@@ -44,20 +77,18 @@ export const handler = async (event) => {
         
         CRITICAL RULES:
         1. Output ONLY a valid JSON object.
-        2. Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json).
-        3. Do NOT include ANY conversational text before or after the JSON.
-        4. Be completely deterministic. Always apply the exact same standard nutritional values (e.g., USDA database) to identical food items across different requests.
+        2. Do NOT wrap the JSON in markdown code blocks.
+        3. Do NOT include ANY conversational text.
 
         {format_instructions}
       `,
       inputVariables: ["profession", "weather", "meals", "activities"],
-      partialVariables: { format_instructions: formatInstructions },
+      partialVariables: { format_instructions: parser.getFormatInstructions() },
     });
 
-    // 4. Create the LangChain Chain (Prompt -> Model -> Parser)
-    const chain = prompt.pipe(model).pipe(parser);
+    // Execute the pipeline
+    const chain = prompt.pipe(robustModel).pipe(parser);
 
-    // 5. Execute the chain with the user's payload
     const result = await chain.invoke({
       profession: payload.profession,
       weather: JSON.stringify(payload.weather),
@@ -65,7 +96,6 @@ export const handler = async (event) => {
       activities: JSON.stringify(payload.activities),
     });
 
-    // 6. Return the perfectly parsed JSON back to React
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
@@ -75,7 +105,7 @@ export const handler = async (event) => {
   } catch (err) {
     return { 
       statusCode: 500, 
-      body: JSON.stringify({ error: `Failed to process data via LangChain ${err}`, details: err.message }) 
+      body: JSON.stringify({ error: `Processing failed across all fallback models: ${err.message}` }) 
     };
   }
 };
