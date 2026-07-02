@@ -18,7 +18,7 @@ export const handler = async (event) => {
 
     // 1. Initialize the LangChain Gemini Model
     const model = new ChatGoogleGenerativeAI({
-      modelName: "gemini-2.5-flash",
+      modelName: "gemini-3.1-flash-lite",
       apiKey: apiKey,
       temperature: 0.0, // Low temperature for more consistent data parsing
     });
