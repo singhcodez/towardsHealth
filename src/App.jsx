@@ -26,7 +26,7 @@ const [history, setHistory] = useState(() => {
 // Inside your App component
 const [weather, setWeather] = useState({ temp: "Unknown", condition: "Unknown" });
 const [locationError, setLocationError] = useState("");
-useEffect(() => {
+
 const fetchWeather = async (lat, lon, cityName = null) => {
   const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
   let url = '';
@@ -56,7 +56,6 @@ const fetchWeather = async (lat, lon, cityName = null) => {
     setWeather({ temp: "Unknown", condition: "Unknown" }); 
   }
 };
-}, [profile.city, profile.lat, profile.lon]);
 
 
   // Register PWA Service Worker
