@@ -137,7 +137,7 @@ try {
         <h1 className="text-3xl font-extrabold text-blue-600">Towards Fitness</h1>
         <p className="text-sm text-gray-500 font-medium">Smart AI Health Logging</p>
       </header>
-      <History history="{history}"/>
+     
       <Onboarding profile={profile} setProfile={setProfile} />
       <Calculators profile={profile} />
       <MealLogger meals={meals} setMeals={setMeals} />
@@ -160,6 +160,7 @@ try {
       )}
 
       <Dashboard analysis={analysis} />
+       <History history="{history}"/>
     </div>
   );
 }
